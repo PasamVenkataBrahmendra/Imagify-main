@@ -10,7 +10,7 @@
  */
 const BACKEND_ENDPOINT =
   import.meta.env.PROD
-    ? 'https://https://imagify-main-1-my22.onrender.com/api/image/generate'
+    ? 'https://imagify-main-1-my22.onrender.com/api/image/generate'
     : '/api/image/generate';
 
 /**
