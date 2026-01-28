@@ -30,9 +30,6 @@ app.use((req, res, next) => {
 const HF_MODEL_URL =
   'https://router.huggingface.co/hf-inference/models/stabilityai/stable-diffusion-xl-base-1.0';
 
-// Hugging Face Inference Router endpoint for SDXL
-const HF_MODEL_URL =
-  'https://router.huggingface.co/hf-inference/models/stabilityai/stable-diffusion-xl-base-1.0';
 
 /**
  * Helper to call Hugging Face Inference API with basic retry
