@@ -12,17 +12,14 @@ import express from 'express';
 const app = express();
 app.use(express.json({ limit: '2mb' }));
 
-// CORS middleware for Netlify frontend
+// CORS for Netlify frontend
 app.use((req, res, next) => {
+  // IMPORTANT: set this to your Netlify site origin
   const allowedOrigin = 'https://musical-empanada-e9c54b.netlify.app';
-  
-  // Set CORS headers
+
   res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-
-  // Handle preflight OPTIONS request
   if (req.method === 'OPTIONS') {
     return res.sendStatus(204);
   }
@@ -33,6 +30,7 @@ app.use((req, res, next) => {
 // Hugging Face Inference Router endpoint for SDXL
 const HF_MODEL_URL =
   'https://router.huggingface.co/hf-inference/models/stabilityai/stable-diffusion-xl-base-1.0';
+
 
 /**
  * Helper to call Hugging Face Inference API with basic retry

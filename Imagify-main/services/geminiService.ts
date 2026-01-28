@@ -8,8 +8,10 @@
  *   at POST /api/image/generate (see server.mjs).
  * - This file only talks to that backend endpoint; no API keys live in the browser.
  */
-
-const BACKEND_ENDPOINT = '/api/image/generate';
+const BACKEND_ENDPOINT =
+  import.meta.env.PROD
+    ? 'https://imagify-main-1-my22.onrender.com/api/image/generate'
+    : '/api/image/generate';
 
 /**
  * Low-level helper to send a prompt to the backend and get back a browser-usable image URL.
