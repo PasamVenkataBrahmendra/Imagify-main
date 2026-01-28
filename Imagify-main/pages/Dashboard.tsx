@@ -16,6 +16,7 @@ import {
   fuseImages, 
   runFitCheck 
 } from '../services/geminiService';
+import { logGenerationActivity } from '../services/dbService';
 
 interface DashboardProps {
   theme: AppTheme;
@@ -57,22 +58,40 @@ const Dashboard: React.FC<DashboardProps> = ({ theme, onToggleTheme }) => {
     setResult(null);
     try {
       let res;
+      let logPrompt = '';
+      
       if (activeTab === DashboardTab.TextToImage) {
         if (!prompt) throw new Error("Please describe what you want to create.");
+        logPrompt = prompt;
         res = await generateImageFromText(prompt, imgStyle, imgSize);
         setResult({ imageUrl: res });
+        // Save to database
+        await logGenerationActivity(activeTab, logPrompt);
+        // Clear prompt after successful generation
+        setPrompt('');
       } else if (activeTab === DashboardTab.StyleTransform) {
         if (!singleImg) throw new Error("Please upload a photo to style.");
+        logPrompt = `Style: ${transformStyle}${styleRefinePrompt ? ` - ${styleRefinePrompt}` : ''}`;
         res = await styleTransform(singleImg, transformStyle, styleRefinePrompt);
         setResult({ imageUrl: res });
+        // Save to database
+        await logGenerationActivity(activeTab, logPrompt);
+        // Clear inputs after successful generation
+        setStyleRefinePrompt('');
       } else if (activeTab === DashboardTab.ImageFusion) {
         if (!fuseA || !fuseB) throw new Error("Both images are required to combine them.");
+        logPrompt = 'Fused two images together';
         res = await fuseImages(fuseA, fuseB);
         setResult({ imageUrl: res });
+        // Save to database
+        await logGenerationActivity(activeTab, logPrompt);
       } else if (activeTab === DashboardTab.FitCheck) {
         if (!fitPerson || !fitOutfit) throw new Error("Both your photo and an outfit photo are required.");
+        logPrompt = 'Virtual fit check performed';
         const { imageUrl, analysis } = await runFitCheck(fitPerson, fitOutfit);
         setResult({ imageUrl, analysis });
+        // Save to database
+        await logGenerationActivity(activeTab, logPrompt);
       }
     } catch (e: any) {
       setError(e.message);
