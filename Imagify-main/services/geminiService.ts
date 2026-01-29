@@ -53,12 +53,13 @@ async function requestImageFromBackend(prompt: string): Promise<string> {
 
 /* Exported functions mimic previous API shape so UI plumbing remains the same */
 
-/** Generate an image from text using Stable Diffusion XL via backend. Style is inferred from prompt text. */
+/** Generate an image from text using Stable Diffusion XL via backend. */
 export const generateImageFromText = async (
   prompt: string,
+  style: string,
   size: string,
 ) => {
-  const fullPrompt = `Generate an image with the following description: ${prompt}. Aspect ratio: ${size}. Use high quality, detailed Stable Diffusion XL output. Infer the artistic style, mood, and visual approach directly from the prompt text.`;
+  const fullPrompt = `Generate an image with the following description: ${prompt}. Style: ${style}. Aspect ratio: ${size}. Use high quality, detailed Stable Diffusion XL output.`;
 
   const imageUrl = await requestImageFromBackend(fullPrompt);
   return imageUrl;

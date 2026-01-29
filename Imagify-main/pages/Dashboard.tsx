@@ -31,6 +31,7 @@ const Dashboard: React.FC<DashboardProps> = ({ theme, onToggleTheme }) => {
 
   // Inputs
   const [prompt, setPrompt] = useState('');
+  const [imgStyle, setImgStyle] = useState('Realistic Photo');
   const [imgSize, setImgSize] = useState('1:1');
   
   const [singleImg, setSingleImg] = useState<string | null>(null);
@@ -61,7 +62,7 @@ const Dashboard: React.FC<DashboardProps> = ({ theme, onToggleTheme }) => {
       if (activeTab === DashboardTab.TextToImage) {
         if (!prompt) throw new Error("Please describe what you want to create.");
         logPrompt = prompt;
-        res = await generateImageFromText(prompt, imgSize);
+        res = await generateImageFromText(prompt, imgStyle, imgSize);
         setResult({ imageUrl: res });
         // Clear prompt after successful generation
         setPrompt('');
@@ -253,17 +254,38 @@ const Dashboard: React.FC<DashboardProps> = ({ theme, onToggleTheme }) => {
                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Describe your image</label>
                     <textarea 
                       value={prompt} onChange={(e) => setPrompt(e.target.value)}
-                      placeholder="e.g. A futuristic city with flying cars at sunset, anime style... describe both the scene and desired style!"
+                      placeholder="e.g. A futuristic city with flying cars at sunset..."
                       className="w-full h-32 p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 outline-none focus:border-brand transition-all text-sm leading-relaxed"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Aspect Ratio</label>
-                    <select value={imgSize} onChange={e => setImgSize(e.target.value)} aria-label="Select image aspect ratio" className="w-full p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-bold outline-none cursor-pointer">
-                      <option>1:1 (Square)</option>
-                      <option>16:9 (Wide)</option>
-                      <option>9:16 (Tall)</option>
-                    </select>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Choose Style</label>
+                      <select value={imgStyle} onChange={e => setImgStyle(e.target.value)} aria-label="Select image style" className="w-full p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-bold outline-none cursor-pointer">
+                        <option>Realistic Photo</option>
+                        <option>3D Render</option>
+                        <option>Digital Art</option>
+                        <option>Watercolor Painting</option>
+                        <option>Oil Painting</option>
+                        <option>Anime</option>
+                        <option>Cartoon</option>
+                        <option>Sketch</option>
+                        <option>Cyberpunk</option>
+                        <option>Fantasy Art</option>
+                        <option>Minimalist</option>
+                        <option>Vintage Poster</option>
+                        <option>Photography Film</option>
+                        <option>Pixel Art</option>
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Aspect Ratio</label>
+                      <select value={imgSize} onChange={e => setImgSize(e.target.value)} aria-label="Select image aspect ratio" className="w-full p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-bold outline-none cursor-pointer">
+                        <option>1:1 (Square)</option>
+                        <option>16:9 (Wide)</option>
+                        <option>9:16 (Tall)</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
               )}
