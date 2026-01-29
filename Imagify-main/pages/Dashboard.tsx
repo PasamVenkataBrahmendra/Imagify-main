@@ -282,8 +282,13 @@ const Dashboard: React.FC<DashboardProps> = ({ theme, onToggleTheme }) => {
                       <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Aspect Ratio</label>
                       <select value={imgSize} onChange={e => setImgSize(e.target.value)} aria-label="Select image aspect ratio" className="w-full p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-bold outline-none cursor-pointer">
                         <option>1:1 (Square)</option>
+                        <option>4:3 (Standard)</option>
+                        <option>3:2 (Classic)</option>
                         <option>16:9 (Wide)</option>
+                        <option>21:9 (Ultra-Wide)</option>
                         <option>9:16 (Tall)</option>
+                        <option>2:3 (Portrait)</option>
+                        <option>3:4 (Mobile)</option>
                       </select>
                     </div>
                   </div>
