@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { 
   Sparkles, Palette, Share2, Shirt, LogOut, Loader2, Download, AlertCircle, 
@@ -32,15 +31,14 @@ const Dashboard: React.FC<DashboardProps> = ({ theme, onToggleTheme }) => {
 
   // Inputs
   const [prompt, setPrompt] = useState('');
-  const [imgStyle, setImgStyle] = useState('Realistic Photo');
   const [imgSize, setImgSize] = useState('1:1');
   
   const [singleImg, setSingleImg] = useState<string | null>(null);
-  const [transformStyle, setTransformStyle] = useState('Anime');
   const [styleRefinePrompt, setStyleRefinePrompt] = useState('');
   
   const [fuseA, setFuseA] = useState<string | null>(null);
   const [fuseB, setFuseB] = useState<string | null>(null);
+  const [fusionPrompt, setFusionPrompt] = useState('');
   
   const [fitPerson, setFitPerson] = useState<string | null>(null);
   const [fitOutfit, setFitOutfit] = useState<string | null>(null);
@@ -63,35 +61,46 @@ const Dashboard: React.FC<DashboardProps> = ({ theme, onToggleTheme }) => {
       if (activeTab === DashboardTab.TextToImage) {
         if (!prompt) throw new Error("Please describe what you want to create.");
         logPrompt = prompt;
-        res = await generateImageFromText(prompt, imgStyle, imgSize);
+        res = await generateImageFromText(prompt, imgSize);
         setResult({ imageUrl: res });
-        // Save to database
-        await logGenerationActivity(activeTab, logPrompt);
         // Clear prompt after successful generation
         setPrompt('');
+        // Save to database (non-blocking - don't throw on Firestore errors)
+        logGenerationActivity(activeTab, logPrompt).catch(err => 
+          console.warn("Firestore log save failed:", err)
+        );
       } else if (activeTab === DashboardTab.StyleTransform) {
         if (!singleImg) throw new Error("Please upload a photo to style.");
-        logPrompt = `Style: ${transformStyle}${styleRefinePrompt ? ` - ${styleRefinePrompt}` : ''}`;
-        res = await styleTransform(singleImg, transformStyle, styleRefinePrompt);
+        logPrompt = styleRefinePrompt || 'Photo stylist transformation';
+        res = await styleTransform(singleImg, styleRefinePrompt);
         setResult({ imageUrl: res });
-        // Save to database
-        await logGenerationActivity(activeTab, logPrompt);
         // Clear inputs after successful generation
         setStyleRefinePrompt('');
+        // Save to database (non-blocking)
+        logGenerationActivity(activeTab, logPrompt).catch(err => 
+          console.warn("Firestore log save failed:", err)
+        );
       } else if (activeTab === DashboardTab.ImageFusion) {
         if (!fuseA || !fuseB) throw new Error("Both images are required to combine them.");
-        logPrompt = 'Fused two images together';
-        res = await fuseImages(fuseA, fuseB);
+        if (!fusionPrompt) throw new Error("Please provide a prompt describing how to combine the images.");
+        logPrompt = fusionPrompt;
+        res = await fuseImages(fuseA, fuseB, fusionPrompt);
         setResult({ imageUrl: res });
-        // Save to database
-        await logGenerationActivity(activeTab, logPrompt);
+        // Clear fusion prompt after successful generation
+        setFusionPrompt('');
+        // Save to database (non-blocking)
+        logGenerationActivity(activeTab, logPrompt).catch(err => 
+          console.warn("Firestore log save failed:", err)
+        );
       } else if (activeTab === DashboardTab.FitCheck) {
         if (!fitPerson || !fitOutfit) throw new Error("Both your photo and an outfit photo are required.");
         logPrompt = 'Virtual fit check performed';
         const { imageUrl, analysis } = await runFitCheck(fitPerson, fitOutfit);
         setResult({ imageUrl, analysis });
-        // Save to database
-        await logGenerationActivity(activeTab, logPrompt);
+        // Save to database (non-blocking)
+        logGenerationActivity(activeTab, logPrompt).catch(err => 
+          console.warn("Firestore log save failed:", err)
+        );
       }
     } catch (e: any) {
       setError(e.message);
@@ -164,7 +173,7 @@ const Dashboard: React.FC<DashboardProps> = ({ theme, onToggleTheme }) => {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="w-full max-w-sm bg-white dark:bg-carddark rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in zoom-in-95 duration-300">
             <div className="p-4 flex justify-end">
-              <button onClick={() => setShowProfile(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors text-slate-400">
+              <button type="button" onClick={() => setShowProfile(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors text-slate-400" title="Close Profile">
                 <X size={20} />
               </button>
             </div>
@@ -215,7 +224,7 @@ const Dashboard: React.FC<DashboardProps> = ({ theme, onToggleTheme }) => {
         <span className="text-lg font-black tracking-tighter text-brand">IMAGIFY AI</span>
         <div className="flex items-center gap-2">
            <ThemeToggle theme={theme} onToggle={onToggleTheme} />
-           <button onClick={() => setShowProfile(true)} className="p-2 text-slate-400"><User size={20} /></button>
+           <button type="button" onClick={() => setShowProfile(true)} className="p-2 text-slate-400" title="Open Profile"><User size={20} /></button>
         </div>
       </header>
 
@@ -244,28 +253,17 @@ const Dashboard: React.FC<DashboardProps> = ({ theme, onToggleTheme }) => {
                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Describe your image</label>
                     <textarea 
                       value={prompt} onChange={(e) => setPrompt(e.target.value)}
-                      placeholder="e.g. A futuristic city with flying cars at sunset..."
+                      placeholder="e.g. A futuristic city with flying cars at sunset, anime style... describe both the scene and desired style!"
                       className="w-full h-32 p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 outline-none focus:border-brand transition-all text-sm leading-relaxed"
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Choose Style</label>
-                      <select value={imgStyle} onChange={e => setImgStyle(e.target.value)} className="w-full p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-bold outline-none cursor-pointer">
-                        <option>Realistic Photo</option>
-                        <option>3D Render</option>
-                        <option>Digital Art</option>
-                        <option>Watercolor Painting</option>
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Aspect Ratio</label>
-                      <select value={imgSize} onChange={e => setImgSize(e.target.value)} className="w-full p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-bold outline-none cursor-pointer">
-                        <option>1:1 (Square)</option>
-                        <option>16:9 (Wide)</option>
-                        <option>9:16 (Tall)</option>
-                      </select>
-                    </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Aspect Ratio</label>
+                    <select value={imgSize} onChange={e => setImgSize(e.target.value)} aria-label="Select image aspect ratio" className="w-full p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-bold outline-none cursor-pointer">
+                      <option>1:1 (Square)</option>
+                      <option>16:9 (Wide)</option>
+                      <option>9:16 (Tall)</option>
+                    </select>
                   </div>
                 </div>
               )}
@@ -274,38 +272,30 @@ const Dashboard: React.FC<DashboardProps> = ({ theme, onToggleTheme }) => {
                 <div className="space-y-6">
                   <ImageUpload id="st" label="Your Photo" onImageSelect={setSingleImg} />
                   <div className="space-y-3">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Refine Style Details (Optional)</label>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Style Transformation Prompt</label>
                     <textarea 
                       value={styleRefinePrompt} onChange={(e) => setStyleRefinePrompt(e.target.value)}
-                      placeholder="e.g. Enhance blue tones and make the lighting more cinematic..."
+                      placeholder="e.g. Transform to anime style, or oil painting with warm tones, or cyberpunk digital art..."
                       className="w-full h-24 p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 outline-none focus:border-brand transition-all text-sm leading-relaxed"
                     />
-                  </div>
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Select Art Preset</label>
-                    <div className="flex flex-wrap gap-2">
-                      {['Anime', 'Cyberpunk', 'Sketch', 'Oil Painting', 'Cartoon', 'Watercolor', '3D'].map(s => (
-                        <button 
-                          key={s} 
-                          onClick={() => setTransformStyle(s)}
-                          className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-tighter border transition-all ${
-                            transformStyle === s 
-                            ? 'bg-brand text-white border-brand' 
-                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500'
-                          }`}
-                        >
-                          {s}
-                        </button>
-                      ))}
-                    </div>
                   </div>
                 </div>
               )}
 
               {activeTab === DashboardTab.ImageFusion && (
-                <div className="grid grid-cols-2 gap-6">
-                  <ImageUpload id="fa" label="Base Subject" onImageSelect={setFuseA} />
-                  <ImageUpload id="fb" label="Style Reference" onImageSelect={setFuseB} />
+                <div className="space-y-6">
+                  <div className="grid grid-cols-2 gap-6">
+                    <ImageUpload id="fa" label="Image 1" onImageSelect={setFuseA} />
+                    <ImageUpload id="fb" label="Image 2" onImageSelect={setFuseB} />
+                  </div>
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Fusion Prompt (How to combine)</label>
+                    <textarea 
+                      value={fusionPrompt} onChange={(e) => setFusionPrompt(e.target.value)}
+                      placeholder="e.g. Use the face from image 1 and the outfit from image 2, or blend the background of image 2 with the subject of image 1..."
+                      className="w-full h-24 p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 outline-none focus:border-brand transition-all text-sm leading-relaxed"
+                    />
+                  </div>
                 </div>
               )}
 
@@ -339,7 +329,7 @@ const Dashboard: React.FC<DashboardProps> = ({ theme, onToggleTheme }) => {
           </div>
 
           {/* PREVIEW PANEL */}
-          <div className="lg:col-span-5 space-y-6 lg:sticky lg:top-28 feature-fade-in" style={{ animationDelay: '0.1s' }}>
+          <div className="lg:col-span-5 space-y-6 lg:sticky lg:top-28 feature-fade-in preview-panel-delay">
             <div className="bg-white dark:bg-carddark border border-slate-200 dark:border-slate-800 rounded-[2.5rem] overflow-hidden shadow-2xl">
               <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Generated Preview</span>
@@ -351,7 +341,7 @@ const Dashboard: React.FC<DashboardProps> = ({ theme, onToggleTheme }) => {
                   <div className="w-full h-full relative">
                     <img src={result.imageUrl} className="w-full h-full object-cover animate-in fade-in" alt="AI Creation" />
                     <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <a href={result.imageUrl} download="imagify-ai.png" className="bg-white p-4 rounded-2xl text-slate-900 hover:scale-110 transition-transform shadow-2xl">
+                      <a href={result.imageUrl} download="imagify-ai.png" className="bg-white p-4 rounded-2xl text-slate-900 hover:scale-110 transition-transform shadow-2xl" title="Download Generated Image">
                         <Download size={24} />
                       </a>
                     </div>

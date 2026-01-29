@@ -53,13 +53,12 @@ async function requestImageFromBackend(prompt: string): Promise<string> {
 
 /* Exported functions mimic previous API shape so UI plumbing remains the same */
 
-/** Generate an image from text using Stable Diffusion XL via backend. */
+/** Generate an image from text using Stable Diffusion XL via backend. Style is inferred from prompt text. */
 export const generateImageFromText = async (
   prompt: string,
-  style: string,
   size: string,
 ) => {
-  const fullPrompt = `Generate an image with the following description: ${prompt}. Style: ${style}. Aspect ratio: ${size}. Use high quality, detailed Stable Diffusion XL output.`;
+  const fullPrompt = `Generate an image with the following description: ${prompt}. Aspect ratio: ${size}. Use high quality, detailed Stable Diffusion XL output. Infer the artistic style, mood, and visual approach directly from the prompt text.`;
 
   const imageUrl = await requestImageFromBackend(fullPrompt);
   return imageUrl;
@@ -71,14 +70,14 @@ export const generateImageFromText = async (
  * NOTE:
  * - SDXL Inference API used here is text-to-image only; we approximate
  *   style transforms by guiding the prompt with the original image type.
+ * - Style is now inferred from the refinePrompt; no explicit style parameter.
  */
 export const styleTransform = async (
   imgDataUrl: string,
-  style: string,
   refinePrompt?: string,
 ) => {
-  const extra = refinePrompt ? ` ${refinePrompt}` : '';
-  const fullPrompt = `Create a new image in the style of "${style}" based on the following reference image. The reference is provided as a base64 data URL; keep key subject details consistent while applying the new style.${extra} Reference (for human guidance only): ${imgDataUrl.slice(
+  const styleGuidance = refinePrompt || 'a high quality artistic transformation maintaining subject details';
+  const fullPrompt = `Transform the following reference image by applying this style guidance: ${styleGuidance}. Keep key subject details consistent while applying the requested artistic style. Reference (for human guidance only): ${imgDataUrl.slice(
     0,
     200,
   )}...`;
@@ -88,16 +87,17 @@ export const styleTransform = async (
 };
 
 /**
- * Fuse two images into one.
+ * Fuse two images into one with optional prompt guidance.
  *
  * As with styleTransform, this is approximated via a descriptive prompt
  * since the text-only SDXL endpoint does not take image binaries directly.
  */
-export const fuseImages = async (imgAUrl: string, imgBUrl: string) => {
-  const fullPrompt = `Create a single cohesive image that fuses two source images. Use the first image as the main subject and the second as the background or stylistic reference. The images are provided as data URLs and are meant only as guidance for what to depict. Image A (subject, truncated): ${imgAUrl.slice(
+export const fuseImages = async (imgAUrl: string, imgBUrl: string, fusionPrompt?: string) => {
+  const promptGuidance = fusionPrompt ? `The user provided fusion guidance: ${fusionPrompt}. ` : '';
+  const fullPrompt = `Create a single cohesive image that fuses two source images. ${promptGuidance}Blend them seamlessly, using both as references. Image A (primary reference, truncated): ${imgAUrl.slice(
     0,
     200,
-  )}... Image B (style/background, truncated): ${imgBUrl.slice(0, 200)}...`;
+  )}... Image B (secondary reference, truncated): ${imgBUrl.slice(0, 200)}...`;
 
   const imageUrl = await requestImageFromBackend(fullPrompt);
   return imageUrl;
